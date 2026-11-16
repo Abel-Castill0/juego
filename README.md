@@ -89,6 +89,12 @@ La suite inyecta teclado y ratón dentro de Godot, ejecuta recogida/crafting/lin
 
 La escena rediseñada añade ayuda contextual con `F1`, el taller/estación y acceso vial, un vehículo y radio como hitos, vegetación agrupada, objetos reconocibles y opciones locales de cámara. Las capturas PRE/POST y los resultados completos están en [`docs/QA_FASE1.md`](docs/QA_FASE1.md). Para regenerar las capturas POST, ejecuta la escena `res://tests/mission03_visual_capture.tscn` con renderer visible. La suite E2E también informa promedio, p95 y p99 durante movimiento con linterna y mide 10 alternancias de cámara.
 
+### Misión 04: modelo riggeado, props y audio
+
+El jugador usa un FBX humano con `Skeleton3D` real de 58 huesos y `AnimationTree` con idle, walk, run, jump y crouch. La escena integra 14 modelos GLB distintos de Kenney, materiales PBR Poly Haven para asfalto/madera/metal y grabaciones CC0 de viento, pasos, aterrizaje y pickup. Licencias y fuentes están en [`docs/ASSET_PROVENANCE.md`](docs/ASSET_PROVENANCE.md). Capturas comparativas 1920×1080: `tests/artifacts/mission04/{before,after}/`.
+
+Para generar de nuevo POST con renderer visible: `godot --path . res://tests/mission04_visual_capture.tscn`. Para validar entradas y medir FPS real: `godot --path . res://tests/interactive_tests.tscn` (sin `--headless`). Última prueba: 39/39 inventario, 36/36 interacción, cámara 193.380 ms y 140.10 FPS promedio en 10 s a 1080p en RTX 4060 Laptop. Esta variante del personaje lleva manga larga, pantalones y zapatillas; chaqueta y botas robustas siguen pendientes.
+
 ## 7. Estructura de archivos
 
 ```text

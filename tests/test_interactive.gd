@@ -75,6 +75,17 @@ func _run() -> void:
     print("INPUT_TEST_MODE: Input.parse_input_event (sin automatización de teclado del SO)")
     _expect(player.get_node_or_null("CharacterAnimationPlayer") != null and player.get_node_or_null("CharacterAnimationTree") != null and player.get_node("CharacterAnimationTree").active, "Regresión visual: personaje tiene AnimationPlayer y AnimationTree activos")
     _expect(player.get_node("CharacterAnimationTree").tree_root is AnimationNodeBlendSpace2D, "Regresión visual: locomoción usa BlendSpace2D")
+    _expect(player.character_skeleton != null and player.character_skeleton.get_bone_count() >= 50, "Asset M04: modelo humano importado contiene Skeleton3D funcional")
+    var required_animations := ["idle", "walk", "run", "jump", "crouch"]
+    var clips_valid := true
+    for clip_name in required_animations:
+        clips_valid = clips_valid and player._animation_player.has_animation(clip_name) and player._animation_player.get_animation(clip_name).get_track_count() > 0
+    _expect(clips_valid, "Asset M04: AnimationTree usa cinco clips con tracks riggeados")
+    var real_prop_count := 0
+    for prop in main.get_node("World").get_children():
+        if prop.name.begins_with("Kenney_"):
+            real_prop_count += 1
+    _expect(real_prop_count >= 12, "Asset M04: escena carga 12 o más props GLB distintos (%d)" % real_prop_count)
     var has_multimesh := false
     for child in main.get_node("World").get_children():
         if child is MultiMeshInstance3D and child.multimesh.instance_count >= 10:
@@ -106,6 +117,12 @@ func _run() -> void:
     _expect(not measured_camera_ms.is_empty() and measured_camera_ms.back() < 300.0, "Tiempo de transición medido bajo 300 ms")
 
     var cloth_pickup := _aim_pickup("cloth", 2)
+    var distance_before_approach := player.global_position.distance_to(cloth_pickup.global_position)
+    _inject_key(KEY_W, true)
+    for _frame in range(6): await get_tree().physics_frame
+    _inject_key(KEY_W, false)
+    await get_tree().physics_frame
+    _expect(player.global_position.distance_to(cloth_pickup.global_position) < distance_before_approach, "Prueba E2E: mueve al personaje hacia el objeto antes de recogerlo")
     await _collect_with_injected_e(cloth_pickup)
     _expect(not is_instance_valid(cloth_pickup) or cloth_pickup.is_queued_for_deletion(), "Prueba E2E: E elimina pickup aceptado")
     _expect(player.inventory.get_count("cloth") == 2, "Prueba E2E: E aumenta inventario")
@@ -113,6 +130,9 @@ func _run() -> void:
     var herb_pickup := _aim_pickup("herb", 1)
     await _collect_with_injected_e(herb_pickup)
     _expect(player.inventory.discovered_recipes.has("bandage"), "Prueba E2E: materiales revelan receta")
+
+    # El impulso del acercamiento E2E debe asentarse antes de medir el bloqueo modal.
+    for _frame in range(24): await get_tree().physics_frame
 
     await _pulse_key(KEY_TAB)
     _expect(hud.inventory_open and hud.inventory_layer.visible, "Prueba de entrada inyectada: Tab abre inventario")
@@ -192,6 +212,9 @@ func _run() -> void:
     print("FPS_AVERAGE_10S: %.2f" % fps_average)
     _expect(fps_average > 0.0, "Escena de prueba produjo muestras FPS durante 10 segundos")
     print("TOTAL_INTERACTIVE: %d PASS | %d FAIL" % [passed, failed])
+    main.queue_free()
+    await get_tree().process_frame
+    await get_tree().process_frame
     get_tree().quit(0 if failed == 0 else 1)
 
 func _check_signs_and_capture() -> void:

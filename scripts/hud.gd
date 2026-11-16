@@ -4,7 +4,7 @@ extends CanvasLayer
 const COLOR_PANEL := Color(0.045, 0.075, 0.093, 0.92)
 const COLOR_ACCENT := Color("#80d3bc")
 const COLOR_ERROR := Color("#f39b92")
-const PICKUP_SOUND: AudioStream = preload("res://audio/pickup.wav")
+const PICKUP_SOUND: AudioStream = preload("res://audio/mission04/cloth_pickup.mp3")
 const CRAFT_SOUND: AudioStream = preload("res://audio/craft.wav")
 const ERROR_SOUND: AudioStream = preload("res://audio/error.wav")
 
@@ -27,6 +27,7 @@ var _sfx_player: AudioStreamPlayer
 var help_panel: PanelContainer
 var _help_visible: bool = false
 var _sort_inventory: bool = false
+var _sfx_generation: int = 0
 
 func _ready() -> void:
     player = get_parent().get_node("Player") as SurvivorPlayer
@@ -325,7 +326,7 @@ func _on_item_clicked(item_id: String) -> void:
     var message: String = player.use_inventory_item(item_id)
     var failed: bool = message.begins_with("Objeto") or message.begins_with("Salud maxima") or message.begins_with("La bateria")
     _show_toast(message, failed)
-    _play_sound(ERROR_SOUND if failed else PICKUP_SOUND)
+    _play_sound(ERROR_SOUND if failed else PICKUP_SOUND, 0.48 if not failed else -1.0)
 
 func _on_craft_clicked(recipe_id: String) -> void:
     var result: String = inventory.craft(recipe_id)
@@ -335,14 +336,23 @@ func _on_craft_clicked(recipe_id: String) -> void:
     _play_sound(ERROR_SOUND if is_error else CRAFT_SOUND)
 
 func _on_pickup_succeeded(_item_id: String, _quantity: int) -> void:
-    _play_sound(PICKUP_SOUND)
+    _play_sound(PICKUP_SOUND, 0.48)
 
-func _play_sound(stream: AudioStream) -> void:
+func _play_sound(stream: AudioStream, stop_after_seconds: float = -1.0) -> void:
     if _sfx_player == null:
         return
+    _sfx_generation += 1
+    var generation := _sfx_generation
     _sfx_player.stop()
     _sfx_player.stream = stream
     _sfx_player.play()
+    if stop_after_seconds > 0.0:
+        _stop_sfx_after(generation, stop_after_seconds)
+
+func _stop_sfx_after(generation: int, delay: float) -> void:
+    await get_tree().create_timer(delay).timeout
+    if generation == _sfx_generation and _sfx_player != null:
+        _sfx_player.stop()
 
 func _on_action_feedback(message: String, is_error: bool) -> void:
     _show_toast(message, is_error)

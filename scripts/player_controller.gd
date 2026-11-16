@@ -19,6 +19,11 @@ const MOUSE_SENSITIVITY: float = 0.0021
 const CAMERA_LENGTH: float = 3.2
 const CAMERA_CHANGE_SPEED: float = 17.0  # 3.2m / 17m/s = 0.188s.
 const FLASHLIGHT_DRAIN_PER_SECOND: float = 0.30
+const CHARACTER_SCENE: PackedScene = preload("res://assets/third_party/kenney/character/Model/characterMedium.fbx")
+const IDLE_SCENE: PackedScene = preload("res://assets/third_party/kenney/character/Animations/idle.fbx")
+const RUN_SCENE: PackedScene = preload("res://assets/third_party/kenney/character/Animations/run.fbx")
+const JUMP_SCENE: PackedScene = preload("res://assets/third_party/kenney/character/Animations/jump.fbx")
+const AXE_SCENE: PackedScene = preload("res://assets/third_party/kenney/survival/tool-axe.glb")
 
 @onready var inventory: InventoryComponent = $Inventory
 @onready var collider: CollisionShape3D = $CollisionShape3D
@@ -38,16 +43,20 @@ var torch_equipped: bool = false
 var spear_equipped: bool = false
 var battery: float = 100.0
 var health: float = 78.0
-var _spear_model: Node3D
 var _camera_transition_started_usec: int = -1
 var _camera_transition_target: float = CAMERA_LENGTH
-var _motion_phase: float = 0.0
-var _limbs: Array[Node3D] = []
+var character_visual: Node3D
+var character_skeleton: Skeleton3D
+var _weapon_visual: Node3D
 var _animation_player: AnimationPlayer
 var _animation_tree: AnimationTree
 var mouse_sensitivity: float = MOUSE_SENSITIVITY
 var invert_mouse_y: bool = false
 var camera_fov: float = 74.0
+var _footstep_dirt: AudioStreamPlayer3D
+var _footstep_asphalt: AudioStreamPlayer3D
+var _landing_audio: AudioStreamPlayer3D
+var _footstep_timer: float = 0.16
 
 func _ready() -> void:
     Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -55,6 +64,7 @@ func _ready() -> void:
     spring_arm.add_excluded_object(get_rid())
     ray.add_exception(self)
     _create_character_visual()
+    _create_character_audio()
     health_changed.emit(health)
     battery_changed.emit(battery)
 
@@ -78,57 +88,46 @@ func save_control_options(sensitivity: float, inverted_y: bool, fov_value: float
     config.save("user://settings.cfg")
 
 func _create_character_visual() -> void:
-    # Superviviente low-poly con silueta humana: piezas angulares, sin primitivas cápsula.
-    var torso := _add_mesh_part(visuals, "Chaqueta de campo", BoxMesh.new(), Vector3(0, 1.13, 0), Vector3(0.62, 0.72, 0.34), Color("#526d68"))
-    torso.rotation.x = -0.04
-    _add_mesh_part(visuals, "Cuello", CylinderMesh.new(), Vector3(0, 1.57, 0), Vector3(0.14, 0.16, 0.14), Color("#b58c70"))
-    _add_mesh_part(visuals, "Cabeza", SphereMesh.new(), Vector3(0, 1.76, 0), Vector3(0.24, 0.29, 0.23), Color("#bc957d"))
-    _add_mesh_part(visuals, "Cabello", BoxMesh.new(), Vector3(0, 1.96, 0.015), Vector3(0.39, 0.13, 0.38), Color("#292b28"))
-    _add_mesh_part(visuals, "Mochila", BoxMesh.new(), Vector3(0, 1.19, 0.27), Vector3(0.45, 0.56, 0.25), Color("#384d43"))
-    _add_mesh_part(visuals, "Correa izquierda", BoxMesh.new(), Vector3(-0.205, 1.18, -0.18), Vector3(0.07, 0.58, 0.04), Color("#b29765"))
-    _add_mesh_part(visuals, "Correa derecha", BoxMesh.new(), Vector3(0.205, 1.18, -0.18), Vector3(0.07, 0.58, 0.04), Color("#b29765"))
-    var leg_l := _add_mesh_part(visuals, "Pantalon cargo izquierdo", BoxMesh.new(), Vector3(-0.16, 0.58, 0), Vector3(0.23, 0.68, 0.27), Color("#39464b"))
-    var leg_r := _add_mesh_part(visuals, "Pantalon cargo derecho", BoxMesh.new(), Vector3(0.16, 0.58, 0), Vector3(0.23, 0.68, 0.27), Color("#39464b"))
-    _limbs.append(leg_l); _limbs.append(leg_r)
-    _add_mesh_part(visuals, "Bolsillo cargo izquierdo", BoxMesh.new(), Vector3(-0.17, 0.62, -0.15), Vector3(0.18, 0.22, 0.08), Color("#586257"))
-    _add_mesh_part(visuals, "Bolsillo cargo derecho", BoxMesh.new(), Vector3(0.17, 0.62, -0.15), Vector3(0.18, 0.22, 0.08), Color("#586257"))
-    _add_mesh_part(visuals, "Bota izquierda", BoxMesh.new(), Vector3(-0.16, 0.13, -0.065), Vector3(0.27, 0.22, 0.42), Color("#252928"))
-    _add_mesh_part(visuals, "Bota derecha", BoxMesh.new(), Vector3(0.16, 0.13, -0.065), Vector3(0.27, 0.22, 0.42), Color("#252928"))
-    var arm_l := _add_mesh_part(visuals, "Manga izquierda", BoxMesh.new(), Vector3(-0.39, 1.13, 0), Vector3(0.20, 0.62, 0.22), Color("#526d68"))
-    var arm_r := _add_mesh_part(visuals, "Manga derecha", BoxMesh.new(), Vector3(0.39, 1.13, 0), Vector3(0.20, 0.62, 0.22), Color("#526d68"))
-    _limbs.append(arm_l); _limbs.append(arm_r)
-    _add_mesh_part(visuals, "Guante izquierdo", BoxMesh.new(), Vector3(-0.39, 0.79, 0), Vector3(0.18, 0.13, 0.20), Color("#303735"))
-    _add_mesh_part(visuals, "Guante derecho", BoxMesh.new(), Vector3(0.39, 0.79, 0), Vector3(0.18, 0.13, 0.20), Color("#303735"))
-    _spear_model = Node3D.new()
-    _spear_model.name = "EquippedSpearVisual"
-    _spear_model.position = Vector3(0.57, 1.12, -0.23)
-    visuals.add_child(_spear_model)
-    _add_mesh_part(_spear_model, "Astil", CylinderMesh.new(), Vector3(0, 0.25, 0), Vector3(0.065, 1.65, 0.065), Color("#b48859"))
-    _add_mesh_part(_spear_model, "Punta", CylinderMesh.new(), Vector3(0, 1.12, 0), Vector3(0.13, 0.35, 0.13), Color("#c5d8df"))
-    _spear_model.visible = false
+    character_visual = CHARACTER_SCENE.instantiate() as Node3D
+    character_visual.name = "characterMedium"
+    character_visual.scale = Vector3.ONE * 0.5
+    visuals.add_child(character_visual)
+    character_skeleton = _find_skeleton(character_visual)
+    if character_skeleton == null:
+        push_error("El personaje Kenney no contiene Skeleton3D")
+        return
+    var human_skin := load("res://assets/third_party/kenney/character/Skins/humanMaleA.png") as Texture2D
+    _apply_character_skin(character_visual, human_skin)
     _setup_character_animation()
+    _weapon_visual = AXE_SCENE.instantiate() as Node3D
+    _weapon_visual.name = "EquippedWeaponModel"
+    _weapon_visual.position = Vector3(0.48, 0.8, -0.18)
+    _weapon_visual.rotation_degrees = Vector3(0, 0, -25)
+    _weapon_visual.scale = Vector3(0.32, 0.32, 0.32)
+    visuals.add_child(_weapon_visual)
+    _weapon_visual.visible = false
 
 func _setup_character_animation() -> void:
     _animation_player = AnimationPlayer.new()
     _animation_player.name = "CharacterAnimationPlayer"
     add_child(_animation_player)
     var library := AnimationLibrary.new()
-    for anim_name in ["idle", "walk", "run", "crouch", "jump"]:
-        var animation := Animation.new()
-        animation.length = 1.0
-        animation.loop_mode = Animation.LOOP_LINEAR if anim_name in ["idle", "walk", "run", "crouch"] else Animation.LOOP_NONE
-        var scale := 0.0 if anim_name in ["idle", "crouch"] else (0.8 if anim_name == "walk" else 1.0)
-        for i in range(4):
-            var track := animation.add_track(Animation.TYPE_VALUE)
-            animation.track_insert_key(track, 0.0, _limbs[i].rotation.x)
-            var side := 1.0 if i in [0, 3] else -1.0
-            var amplitude := 0.43 * scale * side
-            animation.track_insert_key(track, 0.25, amplitude)
-            animation.track_insert_key(track, 0.5, 0.0)
-            animation.track_insert_key(track, 0.75, -amplitude)
-            animation.track_insert_key(track, 1.0, 0.0)
-            animation.track_set_path(track, NodePath("Visual/" + _limbs[i].name + ":rotation:x"))
-        library.add_animation(anim_name, animation)
+    var idle := _extract_animation(IDLE_SCENE, "Root|Idle", "idle")
+    idle.loop_mode = Animation.LOOP_LINEAR
+    library.add_animation("idle", idle)
+    var run := _extract_animation(RUN_SCENE, "Root|Run", "run")
+    run.loop_mode = Animation.LOOP_LINEAR
+    library.add_animation("run", run)
+    var walk := run.duplicate() as Animation
+    walk.resource_name = "walk"
+    _retime_animation(walk, 1.45)
+    library.add_animation("walk", walk)
+    var crouch := idle.duplicate() as Animation
+    crouch.resource_name = "crouch"
+    library.add_animation("crouch", crouch)
+    var jump := _extract_animation(JUMP_SCENE, "Root|Jump", "jump")
+    jump.loop_mode = Animation.LOOP_NONE
+    library.add_animation("jump", jump)
     _animation_player.add_animation_library("", library)
     var blend := AnimationNodeBlendSpace2D.new()
     var anim_node := AnimationNodeAnimation.new(); anim_node.animation = "idle"; blend.add_blend_point(anim_node, Vector2.ZERO, -1, "idle")
@@ -143,18 +142,84 @@ func _setup_character_animation() -> void:
     _animation_tree.active = true
     add_child(_animation_tree)
 
-func _add_mesh_part(parent: Node3D, label: String, mesh: Mesh, at: Vector3, scaling: Vector3, tint: Color) -> MeshInstance3D:
-    var instance := MeshInstance3D.new()
-    instance.name = label
-    instance.mesh = mesh
-    instance.position = at
-    instance.scale = scaling
-    var mat := StandardMaterial3D.new()
-    mat.albedo_color = tint
-    mat.roughness = 0.88
-    instance.material_override = mat
-    parent.add_child(instance)
-    return instance
+func _extract_animation(scene: PackedScene, wanted_name: String, output_name: String) -> Animation:
+    var source_root := scene.instantiate()
+    add_child(source_root)
+    var source_player := _find_animation_player(source_root)
+    if source_player == null:
+        push_error("Clip importado sin AnimationPlayer: " + wanted_name)
+        source_root.queue_free()
+        return Animation.new()
+    var animation := source_player.get_animation(wanted_name).duplicate() as Animation
+    animation.resource_name = output_name
+    for track in range(animation.get_track_count()):
+        var source_path := str(animation.track_get_path(track))
+        animation.track_set_path(track, NodePath("Visual/characterMedium/" + source_path))
+    source_root.queue_free()
+    return animation
+
+func _retime_animation(animation: Animation, speed_factor: float) -> void:
+    for track in range(animation.get_track_count()):
+        for key in range(animation.track_get_key_count(track)):
+            animation.track_set_key_time(track, key, animation.track_get_key_time(track, key) * speed_factor)
+    animation.length *= speed_factor
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+    if node is Skeleton3D: return node as Skeleton3D
+    for child in node.get_children():
+        var found := _find_skeleton(child)
+        if found != null: return found
+    return null
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+    if node is AnimationPlayer: return node as AnimationPlayer
+    for child in node.get_children():
+        var found := _find_animation_player(child)
+        if found != null: return found
+    return null
+
+func _apply_character_skin(node: Node, skin: Texture2D) -> void:
+    if node is MeshInstance3D:
+        var mesh_instance := node as MeshInstance3D
+        for surface in range(mesh_instance.mesh.get_surface_count()):
+            var source_mat := mesh_instance.mesh.surface_get_material(surface)
+            var material := source_mat.duplicate() as StandardMaterial3D if source_mat is StandardMaterial3D else StandardMaterial3D.new()
+            material.albedo_texture = skin
+            material.albedo_color = Color.WHITE
+            material.roughness = 0.82
+            mesh_instance.set_surface_override_material(surface, material)
+    for child in node.get_children(): _apply_character_skin(child, skin)
+
+func _create_character_audio() -> void:
+    _footstep_dirt = _make_audio_player_3d("FootstepsDirt", "res://audio/mission04/footsteps_dirt.mp3")
+    _footstep_asphalt = _make_audio_player_3d("FootstepsAsphalt", "res://audio/mission04/footsteps_asphalt.mp3")
+    _landing_audio = _make_audio_player_3d("LandingSound", "res://audio/mission04/landing_thud.mp3")
+
+func _make_audio_player_3d(label: String, stream_path: String) -> AudioStreamPlayer3D:
+    var audio := AudioStreamPlayer3D.new()
+    audio.name = label
+    audio.stream = load(stream_path) as AudioStream
+    audio.unit_size = 4.0
+    audio.max_distance = 22.0
+    audio.volume_db = -7.0
+    audio.position = Vector3(0.0, 0.12, 0.0)
+    var cutoff := Timer.new()
+    cutoff.name = "OneShotCutoff"
+    cutoff.one_shot = true
+    cutoff.timeout.connect(audio.stop)
+    audio.add_child(cutoff)
+    add_child(audio)
+    return audio
+
+func _play_short_audio(audio: AudioStreamPlayer3D, duration: float) -> void:
+    if audio == null or audio.stream == null: return
+    var cutoff := audio.get_node("OneShotCutoff") as Timer
+    cutoff.stop()
+    audio.pitch_scale = randf_range(0.94, 1.04)
+    var stream_length := audio.stream.get_length()
+    var start_at := randf_range(0.0, maxf(0.0, stream_length - duration))
+    audio.play(start_at)
+    cutoff.start(duration)
 
 func set_ui_open(opened: bool) -> void:
     ui_open = opened
@@ -190,6 +255,7 @@ func _unhandled_input(event: InputEvent) -> void:
         action_feedback.emit("Reloj adelantado 2 horas (atajo de pruebas)", false)
 
 func _physics_process(delta: float) -> void:
+    var was_on_floor := is_on_floor()
     var target_camera_distance: float = 0.02 if first_person else CAMERA_LENGTH
     spring_arm.spring_length = move_toward(spring_arm.spring_length, target_camera_distance, CAMERA_CHANGE_SPEED * delta)
     if _camera_transition_started_usec >= 0 and is_equal_approx(spring_arm.spring_length, _camera_transition_target):
@@ -209,7 +275,8 @@ func _physics_process(delta: float) -> void:
     shape.height = move_toward(shape.height, desired_height, 3.5 * delta)
     collider.position.y = shape.height * 0.5
     pivot.position.y = move_toward(pivot.position.y, 1.03 if crouching else 1.58, 3.2 * delta)
-    visuals.scale.y = 1.0
+    if character_visual != null:
+        character_visual.scale.y = move_toward(character_visual.scale.y, 0.41 if crouching else 0.5, 2.0 * delta)
 
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
@@ -227,7 +294,9 @@ func _physics_process(delta: float) -> void:
     velocity.z = move_toward(velocity.z, direction.z * speed, acceleration * delta)
     move_and_slide()
     var planar_speed := Vector2(velocity.x, velocity.z).length()
-    _motion_phase += delta * (10.0 if running else 7.0)
+    if not was_on_floor and is_on_floor():
+        _play_short_audio(_landing_audio, 0.42)
+    _update_footsteps(delta, planar_speed, running)
     var stride := clampf(planar_speed / SPRINT_SPEED, 0.0, 1.0) * (1.0 if is_on_floor() else 0.2)
     if _animation_tree != null:
         var blend_position := Vector2.ZERO
@@ -245,6 +314,16 @@ func _physics_process(delta: float) -> void:
             flashlight.visible = false
             action_feedback.emit("Bateria agotada", true)
         battery_changed.emit(battery)
+
+func _update_footsteps(delta: float, planar_speed: float, running: bool) -> void:
+    if not is_on_floor() or ui_open or planar_speed < 0.7:
+        _footstep_timer = minf(_footstep_timer, 0.12)
+        return
+    _footstep_timer -= delta
+    if _footstep_timer > 0.0: return
+    var on_asphalt := absf(global_position.x) < 2.9 and global_position.z < 12.0 and global_position.z > -38.0
+    _play_short_audio(_footstep_asphalt if on_asphalt else _footstep_dirt, 0.34)
+    _footstep_timer = 0.34 if running else 0.52
 
 func _can_stand() -> bool:
     # Examinar solo la zona sobre la cabeza agachada: no incluye el suelo.
@@ -304,6 +383,6 @@ func use_inventory_item(item_id: String) -> String:
         "spear":
             if inventory.get_count("spear") > 0:
                 spear_equipped = not spear_equipped
-                _spear_model.visible = spear_equipped
+                _weapon_visual.visible = spear_equipped
                 return "Lanza equipada (combate en fase 2)" if spear_equipped else "Lanza guardada"
     return "Objeto no utilizable en esta fase"

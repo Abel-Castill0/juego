@@ -97,3 +97,48 @@ Se conserva Fase 1. No se implementaron enemigos, combate, mapa multi-zona, chun
 - Luz ambiental nocturna ligeramente elevada, niebla reducida, F1 abre ayuda contextual y el inventario presenta iconos, ordenación y estado de recetas. Sensibilidad, inversión Y y FOV se pueden ajustar desde la ayuda y guardan en `user://settings.cfg`.
 - La animación de locomoción se genera localmente. No se añadió esqueleto deformable/Skeleton3D; los rótulos de pickup siguen usando texto 3D, y no se añadieron pasos ni viento.
 - Procedencia: [docs/ASSET_PROVENANCE.md](ASSET_PROVENANCE.md). No hay assets externos.
+
+## Misión 04 — assets reales, animación riggeada y audio
+
+### Resultados verificados (Godot 4.7.2 Standard, Windows x86_64, RTX 4060 Laptop)
+
+| Verificación | Estado | Evidencia |
+|---|---|---|
+| Importación de assets y scripts | PASS | Godot 4.7.2, importación headless finalizada sin mensajes ERROR/SCRIPT ERROR. |
+| Suite transaccional original | PASS | inventory_tests.tscn: 39 PASS, 0 FAIL. |
+| Suite interactiva con renderer visible | PASS | interactive_tests.tscn: 36 PASS, 0 FAIL, código 0; incluye regresiones del rig, cinco animaciones y conteo de props. |
+| Test unitario de acción | PASS | Comprueba W/A/S/D vía Input.is_action_pressed() tras inyectar InputEventKey. |
+| Prueba de entrada inyectada | PASS | W mueve al jugador hacia el objeto; V cambia cámara; E recoge; Tab abre/cierra; movimiento de ratón enfoca receta; clic fabrica; F activa linterna y se mide drenaje. Eventos entregados mediante Input.parse_input_event(), sin automatización de escritorio. |
+| E2E pickup-crafting-linterna | PASS | W reduce distancia al pickup; E lo elimina y suma inventario; Tab abre mochila; clic produce Vendaje; F activa linterna y batería decrece. |
+| Esqueleto y animación | PASS | FBX Kenney contiene Skeleton3D con 58 huesos. AnimationTree activo con clips con tracks: idle, walk, run, jump, crouch. Walk retima Run y crouch reutiliza Idle. |
+| Props auténticos | PASS | 14 glTF distintos de Kenney Survival Kit instanciados; regresión automatizada cuenta 14. |
+| Texturas PBR | PASS | Mapas diffuse, normal y roughness 2K para asfalto, madera y metal, importados desde Poly Haven. |
+| Audio | PASS | Viento ambiental en loop; pasos por superficie; golpe al aterrizar; pickup corto. Audio CC0 documentado en docs/ASSET_PROVENANCE.md. |
+| Capturas PRE/POST | PASS | Renderer Vulkan; cuatro pares PNG 1920×1080. La prueba de captura usa RenderingServer.frame_post_draw: patio, refugio, inventario y noche bajo tests/artifacts/mission04/{before,after}/. |
+| Transición de cámara | PASS | Medición con Time.get_ticks_usec(): 193.380 ms en la alternancia inicial, menor que 300 ms. |
+| FPS promedio | PASS | 140.10 FPS promedio en 10 s de movimiento renderizado; 96 muestras, p95/p99: 145/145 FPS (límite observado por sincronización de pantalla). |
+| Revisión literal de chaqueta y botas | BLOCKED | El modelo humano riggeado lleva camiseta de manga larga, pantalón y zapatillas; no cumple literalmente chaqueta ni botas robustas. No se presenta como PASS. |
+| Percepción de control en periféricos físicos | BLOCKED | La entrada del motor se validó por inyección interna; no se juzga sensación de ratón/teclado físico ni percepción de la animación a distancia. |
+| FPS en otros equipos | BLOCKED | Solo hay medición con RTX 4060 Laptop a 1920×1080. |
+
+### Evidencia de ejecución
+
+La salida final de consola registró: inventory_tests.tscn = TOTAL: 39 PASS | 0 FAIL; interactive_tests.tscn = TOTAL_INTERACTIVE: 36 PASS | 0 FAIL; CAMERA_TRANSITION_MS: 193.380; FPS_AVERAGE_10S: 140.10; FPS_P95_10S: 145.00; FPS_P99_10S: 145.00.
+
+| Plano | PRE | POST |
+|---|---|---|
+| Patio diurno | ![Patio PRE](../tests/artifacts/mission04/before/patio_day.png) | ![Patio POST](../tests/artifacts/mission04/after/patio_day.png) |
+| Refugio | ![Refugio PRE](../tests/artifacts/mission04/before/shelter_overview.png) | ![Refugio POST](../tests/artifacts/mission04/after/shelter_overview.png) |
+| Inventario | ![Inventario PRE](../tests/artifacts/mission04/before/inventory.png) | ![Inventario POST](../tests/artifacts/mission04/after/inventory.png) |
+| Noche | ![Noche PRE](../tests/artifacts/mission04/before/night.png) | ![Noche POST](../tests/artifacts/mission04/after/night.png) |
+
+Los PNG POST son capturas reales del renderer mediante RenderingServer.frame_post_draw, no composiciones. La suite headless sirve para lógica, pero no sustituye estas capturas.
+
+### Cambios M04
+
+- El sustituto geométrico de personaje fue retirado. Se usa el FBX riggeado real de Kenney; AnimationTree mezcla clips importados y el hacha equipable, pickups y 14 props vienen del pack glTF.
+- Asfalto, suelo de patio, madera de refugio y cubiertas metálicas tienen mapas PBR 2K de Poly Haven.
+- Se añadieron grabaciones CC0 para viento, pasos por superficie, aterrizaje y feedback de pickup. El clip walk se retima para ajustar la velocidad.
+- El HUD mantiene iconos representativos junto al texto de inventario. El sonido de pickup reproduce un fragmento corto.
+- No se añadió enemigo, combate, mapa multizona ni streaming. El modelo no tiene chaqueta/botas robustas y esto permanece pendiente de un asset compatible con el rig.
+- Inventario transaccional, datos JSON y límites de Fase 1 se mantienen; procedencia en ASSET_PROVENANCE.md.

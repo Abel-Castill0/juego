@@ -5,13 +5,34 @@ const PICKUP_SCENE: PackedScene = preload("res://scenes/world_pickup.tscn")
 var sun: DirectionalLight3D
 var environment: Environment
 var sun_sky: ProceduralSkyMaterial
+var asphalt_material: StandardMaterial3D
+var wood_material: StandardMaterial3D
+var metal_material: StandardMaterial3D
+var _wind_audio: AudioStreamPlayer
 
 func _ready() -> void:
     _create_lighting()
+    _create_ambient_audio()
     _create_level()
     _create_pickups()
     GameClock.time_changed.connect(_on_clock_changed)
     _on_clock_changed(GameClock.phase, GameClock.format_time(), GameClock.is_night())
+
+func _create_ambient_audio() -> void:
+    _wind_audio = AudioStreamPlayer.new()
+    _wind_audio.name = "RecordedWindAmbience"
+    var wind := load("res://audio/mission04/wind_forest.mp3") as AudioStreamMP3
+    wind.loop = true
+    _wind_audio.stream = wind
+    _wind_audio.volume_db = -23.0
+    add_child(_wind_audio)
+    if DisplayServer.get_name() != "headless":
+        _wind_audio.play()
+
+func _exit_tree() -> void:
+    if _wind_audio != null:
+        _wind_audio.stop()
+        _wind_audio.stream = null
 
 func _create_lighting() -> void:
     var world_environment := WorldEnvironment.new()
@@ -77,10 +98,17 @@ func _make_box(label: String, center: Vector3, box_size: Vector3, color: Color, 
     return body
 
 func _create_level() -> void:
-    _make_box("Suelo de tierra", Vector3(0, -0.38, 0), Vector3(65, 0.75, 65), Color("#536a60"))
-    _make_box("Camino", Vector3(0, 0.01, 0), Vector3(5.8, 0.04, 48.0), Color("#596669"), false)
-    _make_box("Zona central", Vector3(0, 0.015, -12.0), Vector3(24, 0.04, 10.0), Color("#697372"), false)
-    _make_box("Acceso carretera", Vector3(0, 0.02, -27.0), Vector3(8.5, 0.05, 18.0), Color("#424b4e"), false)
+    asphalt_material = _load_pbr("asphalt_01")
+    wood_material = _load_pbr("wood_planks")
+    metal_material = _load_pbr("metal_plate")
+    var ground := _make_box("Suelo de tierra", Vector3(0, -0.38, 0), Vector3(65, 0.75, 65), Color("#536a60"))
+    _apply_box_material(ground, asphalt_material)
+    var road := _make_box("Camino", Vector3(0, 0.01, 0), Vector3(5.8, 0.04, 48.0), Color("#596669"), false)
+    _apply_box_material(road, asphalt_material)
+    var yard := _make_box("Zona central", Vector3(0, 0.015, -12.0), Vector3(24, 0.04, 10.0), Color("#697372"), false)
+    _apply_box_material(yard, asphalt_material)
+    var highway := _make_box("Acceso carretera", Vector3(0, 0.02, -27.0), Vector3(8.5, 0.05, 18.0), Color("#424b4e"), false)
+    _apply_box_material(highway, asphalt_material)
     for lane_z in [-33.0, -21.0]:
         _make_box("Borde carretera", Vector3(0, 0.06, lane_z), Vector3(8.7, 0.13, 0.22), Color("#8a8778"), false)
     for dash in range(6):
@@ -93,12 +121,14 @@ func _create_level() -> void:
     _make_box("Refugio pared izquierda", Vector3(-5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79"))
     _make_box("Refugio pared derecha", Vector3(5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79"))
     _make_box("Refugio pared fondo", Vector3(0, 1.6, 13.5), Vector3(10.4, 3.2, 0.5), Color("#637b7c"))
-    _make_box("Techo refugio", Vector3(0, 3.35, 10), Vector3(11, 0.35, 7.9), Color("#303e4c"))
+    var refuge_roof := _make_box("Techo refugio", Vector3(0, 3.35, 10), Vector3(11, 0.35, 7.9), Color("#303e4c"))
+    _apply_box_material(refuge_roof, metal_material)
     # Taller de servicio abandonado que conecta el refugio con la carretera.
     _make_box("Taller pared trasera", Vector3(0, 2.0, -18.0), Vector3(14.0, 4.0, 0.55), Color("#565c59"))
     _make_box("Taller pared izquierda", Vector3(-6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d"))
     _make_box("Taller pared derecha", Vector3(6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d"))
-    _make_box("Taller techo", Vector3(0, 4.05, -12.7), Vector3(14.0, 0.35, 11.5), Color("#343d40"))
+    var workshop_roof := _make_box("Taller techo", Vector3(0, 4.05, -12.7), Vector3(14.0, 0.35, 11.5), Color("#343d40"))
+    _apply_box_material(workshop_roof, metal_material)
     _make_box("Porton del taller", Vector3(0, 1.55, -6.95), Vector3(5.0, 3.1, 0.18), Color("#77776a"), false)
     for slat in range(8):
         _make_box("Lama porton", Vector3(0, 0.35 + float(slat) * 0.34, -6.82), Vector3(4.8, 0.035, 0.04), Color("#454b49"), false)
@@ -114,7 +144,8 @@ func _create_level() -> void:
             wheel.top_radius = 0.36; wheel.bottom_radius = 0.36; wheel.height = 0.2; wheel.radial_segments = 10
             var tire := MeshInstance3D.new(); tire.mesh = wheel; tire.position = Vector3(wheel_x, 0.37, wheel_z); tire.rotation.z = PI * 0.5
             var tire_mat := StandardMaterial3D.new(); tire_mat.albedo_color = Color("#202323"); tire.material_override = tire_mat; add_child(tire)
-    _make_box("Piso refugio", Vector3(0, 0.003, 10), Vector3(10, 0.006, 7.0), Color("#938674"), false)
+    var refuge_floor := _make_box("Piso refugio", Vector3(0, 0.003, 10), Vector3(10, 0.006, 7.0), Color("#938674"), false)
+    _apply_box_material(refuge_floor, wood_material)
     # Pasadizo bajo al costado del refugio: requiere agacharse y bloquea incorporarse.
     _make_box("Techo pasadizo bajo", Vector3(-7.0, 1.52, 8.5), Vector3(2.4, 0.28, 4.0), Color("#52666c"))
     _make_box("Soporte pasadizo", Vector3(-8.25, 0.70, 8.5), Vector3(0.22, 1.4, 3.8), Color("#718581"))
@@ -142,6 +173,7 @@ func _create_level() -> void:
     _create_vegetation_cluster(Vector3(-24, 0, 16), 12)
     _create_sign("SALIDA / CARRETERA", Vector3(0, 3.0, -20.0))
     _create_box_radio(Vector3(2.4, 1.1, -10.2))
+    _place_survival_props()
     _create_sign("ESTACION REFUGIO  /  SECTOR A", Vector3(0, 2.0, 7.4))
     _create_sign("PASO BAJO  /  CTRL", Vector3(-7.0, 2.05, 6.45))
     _create_sign("PATIO DE RECOLECCION  /  PROTOTIPO", Vector3(-8.5, 4.0, -11.0))
@@ -190,6 +222,51 @@ func _create_box_radio(at: Vector3) -> void:
     var aerial := MeshInstance3D.new(); var rod := CylinderMesh.new(); rod.top_radius = 0.012; rod.bottom_radius = 0.018; rod.height = 0.48
     aerial.mesh = rod; aerial.position = at + Vector3(0.18, 0.38, 0); aerial.rotation.z = -0.18
     var metal := StandardMaterial3D.new(); metal.albedo_color = Color("#a5a58f"); aerial.material_override = metal; add_child(aerial)
+
+func _load_pbr(asset_name: String) -> StandardMaterial3D:
+    var material := StandardMaterial3D.new()
+    material.albedo_texture = load("res://assets/textures/polyhaven/%s_diff_2k.jpg" % asset_name) as Texture2D
+    material.normal_enabled = true
+    material.normal_texture = load("res://assets/textures/polyhaven/%s_nor_gl_2k.jpg" % asset_name) as Texture2D
+    material.roughness_texture = load("res://assets/textures/polyhaven/%s_rough_2k.jpg" % asset_name) as Texture2D
+    material.uv1_scale = Vector3(9.0, 9.0, 1.0)
+    material.roughness = 0.92
+    return material
+
+func _apply_box_material(body: Node3D, material: Material) -> void:
+    var mesh_node := body.get_node_or_null("MeshInstance3D") as MeshInstance3D
+    if mesh_node != null:
+        mesh_node.material_override = material
+
+func _place_survival_props() -> void:
+    # Catorce props glTF reales del Kenney Survival Kit.
+    _place_prop("barrel", Vector3(-8.4, 0.0, -5.0), 0.9)
+    _place_prop("bedroll", Vector3(-2.7, 0.2, 11.0), 0.8)
+    _place_prop("bottle", Vector3(2.0, 1.0, 11.1), 0.35)
+    _place_prop("box", Vector3(7.8, 0.0, -7.5), 0.85)
+    _place_prop("bucket", Vector3(-4.5, 0.0, -8.2), 0.8)
+    _place_prop("chest", Vector3(-8.2, 0.0, -14.2), 0.85)
+    _place_prop("metal-panel", Vector3(7.9, 1.3, -15.4), 1.0)
+    _place_prop("metal-panel-screws", Vector3(-7.8, 1.4, -15.2), 1.0)
+    _place_prop("resource-planks", Vector3(4.2, 0.05, -5.8), 0.8)
+    _place_prop("signpost", Vector3(1.3, 0.0, -19.1), 0.9)
+    _place_prop("tent", Vector3(8.2, 0.0, 9.6), 1.1)
+    _place_prop("tool-axe", Vector3(1.6, 0.95, 11.2), 0.5)
+    _place_prop("workbench", Vector3(5.5, 0.0, 11.3), 0.85)
+    _place_prop("tree-log", Vector3(6.7, 0.0, 14.2), 0.9)
+
+func _place_prop(asset_name: String, at: Vector3, object_scale: float, yaw: float = 0.0) -> Node3D:
+    var packed := load("res://assets/third_party/kenney/survival/%s.glb" % asset_name) as PackedScene
+    if packed == null:
+        push_error("No se pudo cargar prop GLB: " + asset_name)
+        return null
+    var instance := packed.instantiate() as Node3D
+    instance.name = "Kenney_" + asset_name.replace("-", "_")
+    instance.position = at
+    instance.rotation.y = yaw
+    instance.scale = Vector3.ONE * object_scale
+    add_child(instance)
+    return instance
 
 func _create_pickups() -> void:
     # Reparto deliberado de materiales para desbloquear las 3 recetas.
