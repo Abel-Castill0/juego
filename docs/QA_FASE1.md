@@ -72,8 +72,8 @@ Se conserva Fase 1. No se implementaron enemigos, combate, mapa multi-zona, chun
 | Suite E2E previa + regresiones M03 | PASS | `interactive_tests.tscn`: **32 PASS, 0 FAIL**; conserva las 26 verificaciones E2E existentes y añade seis comprobaciones M03 |
 | Arranque de escena principal | PASS | `--headless --path . res://scenes/main.tscn --quit-after 180`; sin salida de error |
 | Inyección y flujo E2E | PASS | `Input.parse_input_event`: W/A/S/D, W mueve, V alterna cámara, E recoge, Tab abre, clic fabrica vendaje, F enciende linterna y drena batería |
-| Alternancias de cámara | PASS | 10 alternancias automatizadas completadas; mediciones observadas entre **180.038 y 188.243 ms** (<300 ms) |
-| FPS después | PASS | 10 s de movimiento con linterna activa, noche y cámara en primera persona: promedio **140.91 FPS**, p95 **144 FPS**, p99 **144 FPS** (97 muestras, RTX 4060 Laptop; límite observado de 144 FPS) |
+| Alternancias de cámara | PASS | 10 alternancias automatizadas completadas; mediciones observadas entre **179.790 y 194.392 ms** (<300 ms) |
+| FPS después | PASS | 10 s de movimiento nocturno con linterna activa y alternancias de cámara cada segundo: promedio **141.22 FPS**, p95 **144 FPS**, p99 **144 FPS** (97 muestras, RTX 4060 Laptop; límite observado de 144 FPS) |
 | FPS antes p95/p99 | BLOCKED | El registro de Misión 02 solo conservó promedio **137.59 FPS**; no hay muestras crudas para calcular percentiles retrospectivos |
 | Hardware iGPU | BLOCKED | No hay GPU integrada de referencia disponible en este entorno |
 | Revisión humana de game feel y onboarding <90 s | BLOCKED | La automatización comprueba entradas/estado; no mide percepción de control ni tiempo de aprendizaje de una persona |

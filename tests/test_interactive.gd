@@ -241,9 +241,15 @@ func _measure_fps_for_ten_seconds() -> float:
     var fps_samples: Array[float] = []
     var samples := 0
     var next_sample := started
+    var next_camera_toggle := started + 1000
     while Time.get_ticks_msec() - started < 10000:
         await get_tree().process_frame
         var now := Time.get_ticks_msec()
+        if now >= next_camera_toggle:
+            _inject_key(KEY_V, true)
+            await get_tree().process_frame
+            _inject_key(KEY_V, false)
+            next_camera_toggle = now + 1000
         if now >= next_sample:
             var fps := Performance.get_monitor(Performance.TIME_FPS)
             if fps > 0.0:
