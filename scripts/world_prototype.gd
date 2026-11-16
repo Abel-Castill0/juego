@@ -114,22 +114,22 @@ func _create_level() -> void:
     for dash in range(6):
         _make_box("Linea vial", Vector3(0, 0.055, -20.0 - float(dash) * 4.0), Vector3(0.18, 0.025, 1.8), Color("#b5a578"), false)
     # Muro bajo que permite verificar colisión de cámara en tercera persona.
-    _make_box("Muro oeste", Vector3(-10, 1.1, -6), Vector3(0.65, 2.2, 13), Color("#85948f"))
-    _make_box("Muro este", Vector3(10, 1.2, -6), Vector3(0.65, 2.4, 13), Color("#7d8987"))
-    _make_box("Muro norte", Vector3(0, 1.25, -12.8), Vector3(21, 2.5, 0.7), Color("#89928b"))
+    _apply_box_material(_make_box("Muro oeste", Vector3(-10, 1.1, -6), Vector3(0.65, 2.2, 13), Color("#85948f")), metal_material)
+    _apply_box_material(_make_box("Muro este", Vector3(10, 1.2, -6), Vector3(0.65, 2.4, 13), Color("#7d8987")), metal_material)
+    _apply_box_material(_make_box("Muro norte", Vector3(0, 1.25, -12.8), Vector3(21, 2.5, 0.7), Color("#89928b")), metal_material)
     # Refugio pequeño: paredes abiertas para entrar y observar la linterna.
-    _make_box("Refugio pared izquierda", Vector3(-5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79"))
-    _make_box("Refugio pared derecha", Vector3(5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79"))
-    _make_box("Refugio pared fondo", Vector3(0, 1.6, 13.5), Vector3(10.4, 3.2, 0.5), Color("#637b7c"))
+    _apply_box_material(_make_box("Refugio pared izquierda", Vector3(-5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79")), wood_material)
+    _apply_box_material(_make_box("Refugio pared derecha", Vector3(5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79")), wood_material)
+    _apply_box_material(_make_box("Refugio pared fondo", Vector3(0, 1.6, 13.5), Vector3(10.4, 3.2, 0.5), Color("#637b7c")), wood_material)
     var refuge_roof := _make_box("Techo refugio", Vector3(0, 3.35, 10), Vector3(11, 0.35, 7.9), Color("#303e4c"))
     _apply_box_material(refuge_roof, metal_material)
     # Taller de servicio abandonado que conecta el refugio con la carretera.
-    _make_box("Taller pared trasera", Vector3(0, 2.0, -18.0), Vector3(14.0, 4.0, 0.55), Color("#565c59"))
-    _make_box("Taller pared izquierda", Vector3(-6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d"))
-    _make_box("Taller pared derecha", Vector3(6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d"))
+    _apply_box_material(_make_box("Taller pared trasera", Vector3(0, 2.0, -18.0), Vector3(14.0, 4.0, 0.55), Color("#565c59")), metal_material)
+    _apply_box_material(_make_box("Taller pared izquierda", Vector3(-6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d")), metal_material)
+    _apply_box_material(_make_box("Taller pared derecha", Vector3(6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d")), metal_material)
     var workshop_roof := _make_box("Taller techo", Vector3(0, 4.05, -12.7), Vector3(14.0, 0.35, 11.5), Color("#343d40"))
     _apply_box_material(workshop_roof, metal_material)
-    _make_box("Porton del taller", Vector3(0, 1.55, -6.95), Vector3(5.0, 3.1, 0.18), Color("#77776a"), false)
+    _apply_box_material(_make_box("Porton del taller", Vector3(0, 1.55, -6.95), Vector3(5.0, 3.1, 0.18), Color("#77776a"), false), metal_material)
     for slat in range(8):
         _make_box("Lama porton", Vector3(0, 0.35 + float(slat) * 0.34, -6.82), Vector3(4.8, 0.035, 0.04), Color("#454b49"), false)
     _make_box("Isla de servicio", Vector3(-3.3, 0.58, -26.0), Vector3(2.1, 1.15, 1.45), Color("#8b7958"))
@@ -240,20 +240,20 @@ func _apply_box_material(body: Node3D, material: Material) -> void:
 
 func _place_survival_props() -> void:
     # Catorce props glTF reales del Kenney Survival Kit.
-    _place_prop("barrel", Vector3(-8.4, 0.0, -5.0), 0.9)
+    _place_prop("barrel", Vector3(-5.4, 0.0, 0.8), 1.15)
     _place_prop("bedroll", Vector3(-2.7, 0.2, 11.0), 0.8)
     _place_prop("bottle", Vector3(2.0, 1.0, 11.1), 0.35)
-    _place_prop("box", Vector3(7.8, 0.0, -7.5), 0.85)
-    _place_prop("bucket", Vector3(-4.5, 0.0, -8.2), 0.8)
-    _place_prop("chest", Vector3(-8.2, 0.0, -14.2), 0.85)
-    _place_prop("metal-panel", Vector3(7.9, 1.3, -15.4), 1.0)
-    _place_prop("metal-panel-screws", Vector3(-7.8, 1.4, -15.2), 1.0)
+    _place_prop("box", Vector3(6.6, 0.0, -2.8), 1.05)
+    _place_prop("bucket", Vector3(-4.7, 0.0, -2.2), 1.0)
+    _place_prop("chest", Vector3(-7.5, 0.0, -5.5), 0.95)
+    _place_prop("metal-panel", Vector3(7.7, 1.3, -7.0), 1.0)
+    _place_prop("metal-panel-screws", Vector3(-7.7, 1.4, -7.0), 1.0)
     _place_prop("resource-planks", Vector3(4.2, 0.05, -5.8), 0.8)
     _place_prop("signpost", Vector3(1.3, 0.0, -19.1), 0.9)
     _place_prop("tent", Vector3(8.2, 0.0, 9.6), 1.1)
     _place_prop("tool-axe", Vector3(1.6, 0.95, 11.2), 0.5)
-    _place_prop("workbench", Vector3(5.5, 0.0, 11.3), 0.85)
-    _place_prop("tree-log", Vector3(6.7, 0.0, 14.2), 0.9)
+    _place_prop("workbench", Vector3(4.1, 0.0, 7.9), 0.9)
+    _place_prop("tree-log", Vector3(-3.6, 0.0, 5.7), 1.05)
 
 func _place_prop(asset_name: String, at: Vector3, object_scale: float, yaw: float = 0.0) -> Node3D:
     var packed := load("res://assets/third_party/kenney/survival/%s.glb" % asset_name) as PackedScene

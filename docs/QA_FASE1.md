@@ -115,15 +115,15 @@ Se conserva Fase 1. No se implementaron enemigos, combate, mapa multi-zona, chun
 | Texturas PBR | PASS | Mapas diffuse, normal y roughness 2K para asfalto, madera y metal, importados desde Poly Haven. |
 | Audio | PASS | Viento ambiental en loop; pasos por superficie; golpe al aterrizar; pickup corto. Audio CC0 documentado en docs/ASSET_PROVENANCE.md. |
 | Capturas PRE/POST | PASS | Renderer Vulkan; cuatro pares PNG 1920×1080. La prueba de captura usa RenderingServer.frame_post_draw: patio, refugio, inventario y noche bajo tests/artifacts/mission04/{before,after}/. |
-| Transición de cámara | PASS | Medición con Time.get_ticks_usec(): 193.380 ms en la alternancia inicial, menor que 300 ms. |
-| FPS promedio | PASS | 140.10 FPS promedio en 10 s de movimiento renderizado; 96 muestras, p95/p99: 145/145 FPS (límite observado por sincronización de pantalla). |
+| Transición de cámara | PASS | Medición con Time.get_ticks_usec(): 180.975 ms en la alternancia inicial, menor que 300 ms. |
+| FPS promedio | PASS | 139.05 FPS promedio en 10 s de movimiento renderizado; 96 muestras, p95/p99: 144/144 FPS (límite observado por sincronización de pantalla). |
 | Revisión literal de chaqueta y botas | BLOCKED | El modelo humano riggeado lleva camiseta de manga larga, pantalón y zapatillas; no cumple literalmente chaqueta ni botas robustas. No se presenta como PASS. |
 | Percepción de control en periféricos físicos | BLOCKED | La entrada del motor se validó por inyección interna; no se juzga sensación de ratón/teclado físico ni percepción de la animación a distancia. |
 | FPS en otros equipos | BLOCKED | Solo hay medición con RTX 4060 Laptop a 1920×1080. |
 
 ### Evidencia de ejecución
 
-La salida final de consola registró: inventory_tests.tscn = TOTAL: 39 PASS | 0 FAIL; interactive_tests.tscn = TOTAL_INTERACTIVE: 36 PASS | 0 FAIL; CAMERA_TRANSITION_MS: 193.380; FPS_AVERAGE_10S: 140.10; FPS_P95_10S: 145.00; FPS_P99_10S: 145.00.
+La salida final de consola registró: inventory_tests.tscn = TOTAL: 39 PASS | 0 FAIL; interactive_tests.tscn = TOTAL_INTERACTIVE: 36 PASS | 0 FAIL; CAMERA_TRANSITION_MS: 180.975; FPS_AVERAGE_10S: 139.05; FPS_P95_10S: 144.00; FPS_P99_10S: 144.00.
 
 | Plano | PRE | POST |
 |---|---|---|
