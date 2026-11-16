@@ -59,4 +59,41 @@ Captura producida en el test mediante `RenderingServer.frame_post_draw`: [tests/
 
 ## Alcance
 
-Se conserva Fase 1. No se implementaron enemigos, combate, mapa multi-zona, chunks, streaming, floating origin, guardado mundial, HLOD ni AnimationTree.
+Se conserva Fase 1. No se implementaron enemigos, combate, mapa multi-zona, chunks, streaming, floating origin, guardado mundial ni HLOD.
+
+## Misión 03 — Rediseño visual, game feel y UX/UI
+
+### Resultados verificados (Godot 4.7.2 Standard, RTX 4060 Laptop)
+
+| Verificación | Estado | Evidencia |
+|---|---|---|
+| Importación | PASS | `--headless --path . --import`; finalizó sin errores ni warnings de script |
+| Suite original de inventario | PASS | `inventory_tests.tscn`: **39 PASS, 0 FAIL** |
+| Suite E2E previa + regresiones M03 | PASS | `interactive_tests.tscn`: **32 PASS, 0 FAIL**; conserva las 26 verificaciones E2E existentes y añade seis comprobaciones M03 |
+| Arranque de escena principal | PASS | `--headless --path . res://scenes/main.tscn --quit-after 180`; sin salida de error |
+| Inyección y flujo E2E | PASS | `Input.parse_input_event`: W/A/S/D, W mueve, V alterna cámara, E recoge, Tab abre, clic fabrica vendaje, F enciende linterna y drena batería |
+| Alternancias de cámara | PASS | 10 alternancias automatizadas completadas; mediciones observadas entre **180.038 y 188.243 ms** (<300 ms) |
+| FPS después | PASS | 10 s de movimiento con linterna activa, noche y cámara en primera persona: promedio **140.91 FPS**, p95 **144 FPS**, p99 **144 FPS** (97 muestras, RTX 4060 Laptop; límite observado de 144 FPS) |
+| FPS antes p95/p99 | BLOCKED | El registro de Misión 02 solo conservó promedio **137.59 FPS**; no hay muestras crudas para calcular percentiles retrospectivos |
+| Hardware iGPU | BLOCKED | No hay GPU integrada de referencia disponible en este entorno |
+| Revisión humana de game feel y onboarding <90 s | BLOCKED | La automatización comprueba entradas/estado; no mide percepción de control ni tiempo de aprendizaje de una persona |
+| Proporciones humanas / rig | BLOCKED parcial | El modelo sustituto low-poly tiene silueta, chaqueta, cargo, botas y mochila, pero sigue construido con piezas paramétricas. No hay `Skeleton3D` ni rig importado; la animación procedural de extremidades se mezcla mediante `AnimationTree`/`BlendSpace2D`. El criterio humano a 10 m y ausencia de foot sliding requieren revisión visual humana. |
+| Audio ambiental y aterrizaje | BLOCKED | Se conservaron sonidos de pickup/crafting/error; no se añadieron ni midieron viento, pasos o feedback de aterrizaje. |
+| Capturas PRE/POST | PASS | Cuatro pares 1920×1080 guardados bajo `tests/artifacts/mission03/{before,after}/`; captura posterior generada en renderer Vulkan mediante `RenderingServer.frame_post_draw` |
+
+### Capturas comparativas
+
+| Plano | PRE | POST |
+|---|---|---|
+| Patio diurno | ![Patio antes](../tests/artifacts/mission03/before/patio_day.png) | ![Patio después](../tests/artifacts/mission03/after/patio_day.png) |
+| Refugio | ![Refugio antes](../tests/artifacts/mission03/before/shelter_overview.png) | ![Refugio después](../tests/artifacts/mission03/after/shelter_overview.png) |
+| Inventario | ![Inventario antes](../tests/artifacts/mission03/before/inventory.png) | ![Inventario después](../tests/artifacts/mission03/after/inventory.png) |
+| Noche | ![Noche antes](../tests/artifacts/mission03/before/night.png) | ![Noche después](../tests/artifacts/mission03/after/night.png) |
+
+### Cambios M03
+
+- Superviviente geométrico low-poly con ropa diferenciada y movimiento alternado de brazos/piernas; `AnimationPlayer`, `AnimationTree` y `BlendSpace2D` activos.
+- Escena de Fase 1 ampliada con taller/estación, acceso vial, vehículo abandonado, señal de salida, radio y vegetación por grupos MultiMesh con visibilidad limitada. Pickups usan siluetas diferentes para tela, hierbas, madera, chatarra y pilas.
+- Luz ambiental nocturna ligeramente elevada, niebla reducida, F1 abre ayuda contextual y el inventario presenta iconos, ordenación y estado de recetas. Sensibilidad, inversión Y y FOV se pueden ajustar desde la ayuda y guardan en `user://settings.cfg`.
+- La animación de locomoción se genera localmente. No se añadió esqueleto deformable/Skeleton3D; los rótulos de pickup siguen usando texto 3D, y no se añadieron pasos ni viento.
+- Procedencia: [docs/ASSET_PROVENANCE.md](ASSET_PROVENANCE.md). No hay assets externos.

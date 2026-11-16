@@ -38,12 +38,13 @@
 | Tab | Abrir/cerrar inventario y crafting |
 | N | Adelantar 2 horas del reloj, SOLO atajo QA |
 | Esc | Liberar ratón / cerrar inventario |
+| F1 | Ayuda contextual y opciones de sensibilidad, inversión Y y FOV |
 
 ## 5. Probar la Fase 1
 
 1. **Movimiento:** camina/corre, salta y agáchate bajo el pasadizo marcado `PASO BAJO / CTRL`, junto al refugio. Bajo ese obstáculo, el personaje no debería incorporarse si hay colisión sobre la cabeza.
 2. **Cambio de cámara:** pulsa `V` y verifica el cambio suave, sin cambiar la dirección de movimiento. Camina con la pared detrás de la cámara para comprobar el acortamiento de brazo con colisión.
-3. **Recogida:** mira los cubos luminosos hasta ver `[E] RECOGER...`; pulsa `E` y comprueba que desaparecen y aumenta el inventario.
+3. **Recogida:** mira los objetos de tela, hierbas, madera, chatarra o pilas hasta ver `[E] RECOGER...`; pulsa `E` y comprueba que desaparecen y aumenta el inventario.
 4. **Peso máximo:** intenta recoger `Madera x45` (31,5 kg) incluso con la mochila vacía: aparecerá `Demasiado peso`, y el objeto seguirá en el suelo.
 5. **Apilamiento:** 64 unidades por pila; la 65.ª comienza otra casilla si hay espacio y peso disponibles.
 6. **Recetas ocultas:** con mochila vacía no hay recetas visibles. Consigue **Tela** y **Hierbas** para desbloquear **Vendaje**; **Madera** y **Resina** para **Antorcha**; **Madera** y **Chatarra** para **Lanza improvisada**.
@@ -83,6 +84,10 @@ Ejecuta con renderizado normal, sin `--headless`, porque mide FPS reales de la e
 ```
 
 La suite inyecta teclado y ratón dentro de Godot, ejecuta recogida/crafting/linterna, mide cámara y promedia FPS durante 10 segundos. Genera `tests/artifacts/umbral_mission02.png` a 1920×1080. Última salida en la RTX 4060 Laptop: 26 PASS, cámara 187.350 ms, 137.59 FPS promedio. La medición variará con hardware y carga.
+
+### Misión 03: comparativa visual y rendimiento
+
+La escena rediseñada añade ayuda contextual con `F1`, el taller/estación y acceso vial, un vehículo y radio como hitos, vegetación agrupada, objetos reconocibles y opciones locales de cámara. Las capturas PRE/POST y los resultados completos están en [`docs/QA_FASE1.md`](docs/QA_FASE1.md). Para regenerar las capturas POST, ejecuta la escena `res://tests/mission03_visual_capture.tscn` con renderer visible. La suite E2E también informa promedio, p95 y p99 durante movimiento con linterna y mide 10 alternancias de cámara.
 
 ## 7. Estructura de archivos
 

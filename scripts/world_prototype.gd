@@ -20,9 +20,9 @@ func _create_lighting() -> void:
     environment.background_mode = Environment.BG_SKY
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
     environment.reflected_light_source = Environment.REFLECTION_SOURCE_BG
-    environment.ambient_light_energy = 0.75
+    environment.ambient_light_energy = 0.86
     environment.fog_enabled = true
-    environment.fog_density = 0.012
+    environment.fog_density = 0.008
     environment.fog_light_color = Color("#829aa1")
     var sky := Sky.new()
     sun_sky = ProceduralSkyMaterial.new()
@@ -43,7 +43,7 @@ func _on_clock_changed(t: float, _clock_text: String, _night: bool) -> void:
     sun.rotation_degrees = Vector3(-20.0 - 65.0 * absf(solar), -75.0 + t * 360.0, 0.0)
     sun.light_energy = lerpf(0.04, 1.65, brightness)
     sun.light_color = Color("#ffbb8d").lerp(Color("#fff0db"), brightness)
-    environment.ambient_light_energy = lerpf(0.18, 0.82, brightness)
+    environment.ambient_light_energy = lerpf(0.26, 0.86, brightness)
     environment.fog_light_color = Color("#202b45").lerp(Color("#96acb0"), brightness)
     sun_sky.sky_top_color = Color("#061326").lerp(Color("#477d98"), brightness)
     sun_sky.sky_horizon_color = Color("#202e43").lerp(Color("#a5c2b9"), brightness)
@@ -80,6 +80,11 @@ func _create_level() -> void:
     _make_box("Suelo de tierra", Vector3(0, -0.38, 0), Vector3(65, 0.75, 65), Color("#536a60"))
     _make_box("Camino", Vector3(0, 0.01, 0), Vector3(5.8, 0.04, 48.0), Color("#596669"), false)
     _make_box("Zona central", Vector3(0, 0.015, -12.0), Vector3(24, 0.04, 10.0), Color("#697372"), false)
+    _make_box("Acceso carretera", Vector3(0, 0.02, -27.0), Vector3(8.5, 0.05, 18.0), Color("#424b4e"), false)
+    for lane_z in [-33.0, -21.0]:
+        _make_box("Borde carretera", Vector3(0, 0.06, lane_z), Vector3(8.7, 0.13, 0.22), Color("#8a8778"), false)
+    for dash in range(6):
+        _make_box("Linea vial", Vector3(0, 0.055, -20.0 - float(dash) * 4.0), Vector3(0.18, 0.025, 1.8), Color("#b5a578"), false)
     # Muro bajo que permite verificar colisión de cámara en tercera persona.
     _make_box("Muro oeste", Vector3(-10, 1.1, -6), Vector3(0.65, 2.2, 13), Color("#85948f"))
     _make_box("Muro este", Vector3(10, 1.2, -6), Vector3(0.65, 2.4, 13), Color("#7d8987"))
@@ -89,6 +94,26 @@ func _create_level() -> void:
     _make_box("Refugio pared derecha", Vector3(5, 1.6, 10.0), Vector3(0.5, 3.2, 7.0), Color("#677b79"))
     _make_box("Refugio pared fondo", Vector3(0, 1.6, 13.5), Vector3(10.4, 3.2, 0.5), Color("#637b7c"))
     _make_box("Techo refugio", Vector3(0, 3.35, 10), Vector3(11, 0.35, 7.9), Color("#303e4c"))
+    # Taller de servicio abandonado que conecta el refugio con la carretera.
+    _make_box("Taller pared trasera", Vector3(0, 2.0, -18.0), Vector3(14.0, 4.0, 0.55), Color("#565c59"))
+    _make_box("Taller pared izquierda", Vector3(-6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d"))
+    _make_box("Taller pared derecha", Vector3(6.75, 2.0, -12.5), Vector3(0.5, 4.0, 11.0), Color("#62655d"))
+    _make_box("Taller techo", Vector3(0, 4.05, -12.7), Vector3(14.0, 0.35, 11.5), Color("#343d40"))
+    _make_box("Porton del taller", Vector3(0, 1.55, -6.95), Vector3(5.0, 3.1, 0.18), Color("#77776a"), false)
+    for slat in range(8):
+        _make_box("Lama porton", Vector3(0, 0.35 + float(slat) * 0.34, -6.82), Vector3(4.8, 0.035, 0.04), Color("#454b49"), false)
+    _make_box("Isla de servicio", Vector3(-3.3, 0.58, -26.0), Vector3(2.1, 1.15, 1.45), Color("#8b7958"))
+    _make_box("Bomba de combustible", Vector3(-3.3, 1.7, -26.0), Vector3(0.85, 1.2, 0.75), Color("#a74d3f"))
+    _make_box("Techo marquesina", Vector3(-3.3, 3.05, -26.0), Vector3(7.5, 0.24, 3.4), Color("#65716c"))
+    # Vehículo inmóvil como hito de orientación a la salida.
+    _make_box("Carroceria abandonada", Vector3(4.1, 0.72, -30.0), Vector3(2.2, 0.72, 4.4), Color("#566365"))
+    _make_box("Cabina oxidada", Vector3(4.1, 1.4, -30.0), Vector3(1.9, 0.72, 2.1), Color("#3e4a4c"))
+    for wheel_x in [3.0, 5.2]:
+        for wheel_z in [-31.2, -28.8]:
+            var wheel := CylinderMesh.new()
+            wheel.top_radius = 0.36; wheel.bottom_radius = 0.36; wheel.height = 0.2; wheel.radial_segments = 10
+            var tire := MeshInstance3D.new(); tire.mesh = wheel; tire.position = Vector3(wheel_x, 0.37, wheel_z); tire.rotation.z = PI * 0.5
+            var tire_mat := StandardMaterial3D.new(); tire_mat.albedo_color = Color("#202323"); tire.material_override = tire_mat; add_child(tire)
     _make_box("Piso refugio", Vector3(0, 0.003, 10), Vector3(10, 0.006, 7.0), Color("#938674"), false)
     # Pasadizo bajo al costado del refugio: requiere agacharse y bloquea incorporarse.
     _make_box("Techo pasadizo bajo", Vector3(-7.0, 1.52, 8.5), Vector3(2.4, 0.28, 4.0), Color("#52666c"))
@@ -112,9 +137,11 @@ func _create_level() -> void:
         lamp.light_energy = 0.65
         lamp.omni_range = 8.0
         add_child(lamp)
-    for i in range(13):
-        var x: float = -28.0 + float(i) * 4.8
-        _create_low_tree(Vector3(x, 0, -29.0 + float(i % 4) * 1.4))
+    _create_vegetation_cluster(Vector3(-25, 0, -22), 16)
+    _create_vegetation_cluster(Vector3(25, 0, -25), 18)
+    _create_vegetation_cluster(Vector3(-24, 0, 16), 12)
+    _create_sign("SALIDA / CARRETERA", Vector3(0, 3.0, -20.0))
+    _create_box_radio(Vector3(2.4, 1.1, -10.2))
     _create_sign("ESTACION REFUGIO  /  SECTOR A", Vector3(0, 2.0, 7.4))
     _create_sign("PASO BAJO  /  CTRL", Vector3(-7.0, 2.05, 6.45))
     _create_sign("PATIO DE RECOLECCION  /  PROTOTIPO", Vector3(-8.5, 4.0, -11.0))
@@ -144,6 +171,25 @@ func _create_low_tree(at: Vector3) -> void:
     mat.albedo_color = Color("#385f5c")
     mesh.material_override = mat
     add_child(mesh)
+
+func _create_vegetation_cluster(center: Vector3, count: int) -> void:
+    var crown := CylinderMesh.new()
+    crown.top_radius = 0.1; crown.bottom_radius = 1.05; crown.height = 3.2; crown.radial_segments = 7
+    var mat := StandardMaterial3D.new(); mat.albedo_color = Color("#31534c"); mat.roughness = 1.0
+    var multi := MultiMesh.new(); multi.transform_format = MultiMesh.TRANSFORM_3D; multi.mesh = crown; multi.instance_count = count
+    var rng := RandomNumberGenerator.new(); rng.seed = int(center.x * 101 + center.z * 57 + 904)
+    for i in range(count):
+        var x := rng.randf_range(-9.0, 9.0); var z := rng.randf_range(-8.0, 8.0); var s := rng.randf_range(0.75, 1.3)
+        multi.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(s, s, s)), Vector3(x, 2.6 * s, z)))
+    var foliage := MultiMeshInstance3D.new(); foliage.multimesh = multi; foliage.material_override = mat
+    foliage.position = center; foliage.visibility_range_end = 64.0; foliage.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+    add_child(foliage)
+
+func _create_box_radio(at: Vector3) -> void:
+    var radio := _make_box("Radio averiada", at, Vector3(0.62, 0.35, 0.28), Color("#3b4847"), false)
+    var aerial := MeshInstance3D.new(); var rod := CylinderMesh.new(); rod.top_radius = 0.012; rod.bottom_radius = 0.018; rod.height = 0.48
+    aerial.mesh = rod; aerial.position = at + Vector3(0.18, 0.38, 0); aerial.rotation.z = -0.18
+    var metal := StandardMaterial3D.new(); metal.albedo_color = Color("#a5a58f"); aerial.material_override = metal; add_child(aerial)
 
 func _create_pickups() -> void:
     # Reparto deliberado de materiales para desbloquear las 3 recetas.

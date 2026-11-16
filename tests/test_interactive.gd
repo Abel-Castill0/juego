@@ -73,6 +73,16 @@ func _collect_with_injected_e(pickup: WorldPickup) -> void:
 
 func _run() -> void:
     print("INPUT_TEST_MODE: Input.parse_input_event (sin automatización de teclado del SO)")
+    _expect(player.get_node_or_null("CharacterAnimationPlayer") != null and player.get_node_or_null("CharacterAnimationTree") != null and player.get_node("CharacterAnimationTree").active, "Regresión visual: personaje tiene AnimationPlayer y AnimationTree activos")
+    _expect(player.get_node("CharacterAnimationTree").tree_root is AnimationNodeBlendSpace2D, "Regresión visual: locomoción usa BlendSpace2D")
+    var has_multimesh := false
+    for child in main.get_node("World").get_children():
+        if child is MultiMeshInstance3D and child.multimesh.instance_count >= 10:
+            has_multimesh = true
+    _expect(has_multimesh, "Regresión de entorno: vegetación agrupada en MultiMesh")
+    await _pulse_key(KEY_F1)
+    _expect(hud.help_panel.visible, "Regresión UX: F1 muestra ayuda contextual")
+    await _pulse_key(KEY_F1)
     await _test_action_mapping(KEY_W, "move_forward")
     await _test_action_mapping(KEY_A, "move_left")
     await _test_action_mapping(KEY_S, "move_backward")
@@ -107,6 +117,11 @@ func _run() -> void:
     await _pulse_key(KEY_TAB)
     _expect(hud.inventory_open and hud.inventory_layer.visible, "Prueba de entrada inyectada: Tab abre inventario")
     await get_tree().process_frame
+    var modal_position := player.global_position
+    _inject_key(KEY_W, true)
+    for _frame in range(8): await get_tree().physics_frame
+    _inject_key(KEY_W, false)
+    _expect(player.global_position.distance_to(modal_position) < 0.02, "Regresión UX: locomoción bloqueada con inventario modal")
     var recipe_button: Button = null
     for child in hud.recipe_list.get_children():
         if child is Button and child.text.begins_with("Vendaje"):
@@ -164,6 +179,14 @@ func _run() -> void:
     _expect(player.flashlight_enabled and player.flashlight.visible, "Prueba de entrada inyectada: F enciende linterna")
     _expect(player.battery < 80.0, "Prueba E2E: batería drena con linterna encendida")
 
+    var camera_toggles_ok := true
+    for _toggle in range(10):
+        await _pulse_key(KEY_V)
+        for _frame in range(20):
+            await get_tree().physics_frame
+        camera_toggles_ok = camera_toggles_ok and is_equal_approx(player.spring_arm.spring_length, player._camera_transition_target)
+    _expect(camera_toggles_ok, "Regresión: 10 alternancias de cámara completan sin bloquearse")
+
     await _check_signs_and_capture()
     var fps_average := await _measure_fps_for_ten_seconds()
     print("FPS_AVERAGE_10S: %.2f" % fps_average)
@@ -215,6 +238,7 @@ func _measure_fps_for_ten_seconds() -> float:
     _inject_key(KEY_W, true)
     var started := Time.get_ticks_msec()
     var sum_fps := 0.0
+    var fps_samples: Array[float] = []
     var samples := 0
     var next_sample := started
     while Time.get_ticks_msec() - started < 10000:
@@ -224,8 +248,14 @@ func _measure_fps_for_ten_seconds() -> float:
             var fps := Performance.get_monitor(Performance.TIME_FPS)
             if fps > 0.0:
                 sum_fps += fps
+                fps_samples.append(fps)
                 samples += 1
             next_sample = now + 100
     _inject_key(KEY_W, false)
     _expect(samples >= 50, "Muestras FPS suficientes en medición de 10 s (%d)" % samples)
+    fps_samples.sort()
+    var p95 := fps_samples[mini(fps_samples.size() - 1, int(ceil(fps_samples.size() * 0.95)))]
+    var p99 := fps_samples[mini(fps_samples.size() - 1, int(ceil(fps_samples.size() * 0.99)))]
+    print("FPS_P95_10S: %.2f" % p95)
+    print("FPS_P99_10S: %.2f" % p99)
     return sum_fps / float(maxi(samples, 1))

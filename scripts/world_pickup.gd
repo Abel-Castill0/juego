@@ -19,8 +19,20 @@ func _ready() -> void:
     mat.emission_enabled = true
     mat.emission = mat.albedo_color * 0.12
     var mesh_instance := MeshInstance3D.new()
-    var mesh := BoxMesh.new()
-    mesh.size = Vector3(0.38, 0.38, 0.38)
+    var mesh: Mesh
+    match item_id:
+        "cloth", "bandage":
+            var roll := CylinderMesh.new(); roll.top_radius = 0.16; roll.bottom_radius = 0.16; roll.height = 0.34; roll.radial_segments = 12; mesh = roll
+        "herb":
+            var leaf := PrismMesh.new(); leaf.size = Vector3(0.32, 0.12, 0.18); mesh = leaf
+        "wood":
+            var plank := BoxMesh.new(); plank.size = Vector3(0.55, 0.12, 0.2); mesh = plank
+        "scrap":
+            var metal := PrismMesh.new(); metal.size = Vector3(0.34, 0.32, 0.14); mesh = metal
+        "battery":
+            var cell := CylinderMesh.new(); cell.top_radius = 0.105; cell.bottom_radius = 0.105; cell.height = 0.36; cell.radial_segments = 12; mesh = cell
+        _:
+            var box := BoxMesh.new(); box.size = Vector3(0.3, 0.26, 0.24); mesh = box
     mesh_instance.mesh = mesh
     mesh_instance.material_override = mat
     mesh_instance.rotation_degrees = Vector3(10, 20, 8)

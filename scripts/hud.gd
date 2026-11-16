@@ -24,6 +24,9 @@ var hud_weight_label: Label
 var inventory_open: bool = false
 var _toast_timeout: float = 0.0
 var _sfx_player: AudioStreamPlayer
+var help_panel: PanelContainer
+var _help_visible: bool = false
+var _sort_inventory: bool = false
 
 func _ready() -> void:
     player = get_parent().get_node("Player") as SurvivorPlayer
@@ -137,13 +140,27 @@ func _create_hud() -> void:
     toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     root.add_child(toast_label)
 
-    var help_label := _make_label("WASD MOVER  |  SHIFT CORRER  |  CTRL AGACHARSE  |  ESPACIO SALTAR  |  V CAMARA  |  E RECOGER  |  F LINTERNA  |  TAB INVENTARIO  |  N +2H", 12)
-    help_label.anchor_top = 1.0
-    help_label.anchor_bottom = 1.0
-    help_label.offset_top = -38.0
-    help_label.offset_left = 16.0
-    help_label.offset_right = 1350.0
-    root.add_child(help_label)
+    var hint := _make_label("F1 AYUDA", 13, Color("#c6d4cb"))
+    hint.anchor_left = 0.5; hint.anchor_right = 0.5; hint.anchor_top = 1.0; hint.anchor_bottom = 1.0
+    hint.offset_left = -42; hint.offset_right = 42; hint.offset_top = -36; hint.offset_bottom = -12
+    hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    root.add_child(hint)
+    help_panel = PanelContainer.new()
+    help_panel.visible = false
+    help_panel.position = Vector2(20, 238)
+    help_panel.add_theme_stylebox_override("panel", _panel_style())
+    var help_box := VBoxContainer.new()
+    help_box.add_child(_make_label("CONTROLES\nWASD  Mover\nShift  Correr hacia delante\nCtrl  Agacharse  •  Espacio  Saltar\nE  Recoger  •  F  Linterna\nV  Cambiar cámara  •  Tab  Mochila\nEsc  Liberar ratón", 14))
+    var options := HBoxContainer.new()
+    var sens_down := Button.new(); sens_down.text = "Sens −"; sens_down.pressed.connect(func() -> void: _change_options(-0.0002, 0.0))
+    var sens_up := Button.new(); sens_up.text = "Sens +"; sens_up.pressed.connect(func() -> void: _change_options(0.0002, 0.0))
+    var invert_button := Button.new(); invert_button.text = "Invertir Y"; invert_button.pressed.connect(func() -> void: _change_invert_y())
+    var fov_down := Button.new(); fov_down.text = "FOV −"; fov_down.pressed.connect(func() -> void: _change_options(0.0, -5.0))
+    var fov_up := Button.new(); fov_up.text = "FOV +"; fov_up.pressed.connect(func() -> void: _change_options(0.0, 5.0))
+    options.add_child(sens_down); options.add_child(sens_up); options.add_child(invert_button); options.add_child(fov_down); options.add_child(fov_up)
+    help_box.add_child(options)
+    help_panel.add_child(help_box)
+    root.add_child(help_panel)
 
 func _create_inventory_layer() -> void:
     inventory_layer = ColorRect.new()
@@ -190,6 +207,8 @@ func _create_inventory_layer() -> void:
     left.add_theme_constant_override("separation", 10)
     columns.add_child(left)
     left.add_child(_make_label("INVENTARIO  •  20 ESPACIOS / PILAS x64", 14, COLOR_ACCENT))
+    var sort_button := Button.new(); sort_button.text = "Ordenar por nombre"; sort_button.pressed.connect(func() -> void: _sort_inventory = not _sort_inventory; _refresh_inventory())
+    left.add_child(sort_button)
     item_grid = GridContainer.new()
     item_grid.columns = 5
     item_grid.add_theme_constant_override("h_separation", 7)
@@ -211,7 +230,11 @@ func _create_inventory_layer() -> void:
     outer.add_child(bottom)
 
 func _input(event: InputEvent) -> void:
-    if event.is_action_pressed("inventory_toggle"):
+    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F1:
+        _help_visible = not _help_visible
+        help_panel.visible = _help_visible and not inventory_open
+        get_viewport().set_input_as_handled()
+    elif event.is_action_pressed("inventory_toggle"):
         _toggle_inventory(not inventory_open)
         get_viewport().set_input_as_handled()
     elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
@@ -226,9 +249,16 @@ func _input(event: InputEvent) -> void:
 func _toggle_inventory(opened: bool) -> void:
     inventory_open = opened
     inventory_layer.visible = opened
+    help_panel.visible = _help_visible and not opened
     player.set_ui_open(opened)
     if opened:
         _refresh_inventory()
+
+func _change_options(sensitivity_delta: float, fov_delta: float) -> void:
+    player.save_control_options(player.mouse_sensitivity + sensitivity_delta, player.invert_mouse_y, player.camera_fov + fov_delta)
+
+func _change_invert_y() -> void:
+    player.save_control_options(player.mouse_sensitivity, not player.invert_mouse_y, player.camera_fov)
 
 func _on_inventory_changed() -> void:
     _refresh_inventory()
@@ -248,8 +278,15 @@ func _refresh_inventory() -> void:
     weight_label.add_theme_color_override("font_color", COLOR_ERROR if weight >= 28.0 else COLOR_ACCENT)
     for child in item_grid.get_children():
         child.queue_free()
+    var display_slots: Array = inventory.slots.duplicate(true)
+    if _sort_inventory:
+        display_slots.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+            if a.is_empty(): return false
+            if b.is_empty(): return true
+            return ItemDB.label_of(str(a["id"])) < ItemDB.label_of(str(b["id"]))
+        )
     for slot_index in range(InventoryComponent.SLOT_COUNT):
-        var slot: Dictionary = inventory.slots[slot_index]
+        var slot: Dictionary = display_slots[slot_index]
         var button := Button.new()
         button.custom_minimum_size = Vector2(105, 72)
         button.add_theme_font_size_override("font_size", 12)
@@ -259,7 +296,8 @@ func _refresh_inventory() -> void:
         else:
             var item_id: String = str(slot["id"])
             var item: Dictionary = ItemDB.get_item(item_id)
-            button.text = "%s\nx%d" % [str(item.get("name", item_id)), int(slot["quantity"])]
+            var glyphs := {"cloth":"▤", "herb":"✿", "wood":"▰", "resin":"◆", "scrap":"⚙", "battery":"▣", "food":"◉", "bandage":"✚", "torch":"♨", "spear":"⌁"}
+            button.text = "%s  %s\nx%d" % [str(glyphs.get(item_id, "•")), str(item.get("name", item_id)), int(slot["quantity"])]
             button.tooltip_text = "%s\n%.2f kg/unid.\n%s" % [str(item.get("name", item_id)), float(item.get("weight_kg", 0.0)), str(item.get("description", ""))]
             button.pressed.connect(_on_item_clicked.bind(item_id))
         item_grid.add_child(button)
@@ -274,7 +312,7 @@ func _refresh_inventory() -> void:
         for item_id in recipe["ingredients"].keys():
             ingredients.append("%s x%d" % [ItemDB.label_of(str(item_id)), int(recipe["ingredients"][item_id])])
         var recipe_button := Button.new()
-        recipe_button.text = "%s\n%s" % [str(recipe["name"]), " + ".join(ingredients)]
+        recipe_button.text = "%s%s\n%s" % [str(recipe["name"]), "  ✓" if inventory.can_craft(str(recipe["id"])) else "  ○", "  •  ".join(ingredients)]
         recipe_button.custom_minimum_size = Vector2(230, 65)
         recipe_button.disabled = not inventory.can_craft(str(recipe["id"]))
         recipe_button.tooltip_text = "Fabricar: " + str(recipe["name"]) if not recipe_button.disabled else inventory.craft_error(str(recipe["id"]))

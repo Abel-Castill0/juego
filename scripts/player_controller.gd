@@ -41,24 +41,64 @@ var health: float = 78.0
 var _spear_model: Node3D
 var _camera_transition_started_usec: int = -1
 var _camera_transition_target: float = CAMERA_LENGTH
+var _motion_phase: float = 0.0
+var _limbs: Array[Node3D] = []
+var _animation_player: AnimationPlayer
+var _animation_tree: AnimationTree
+var mouse_sensitivity: float = MOUSE_SENSITIVITY
+var invert_mouse_y: bool = false
+var camera_fov: float = 74.0
 
 func _ready() -> void:
     Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+    _load_video_controls()
     spring_arm.add_excluded_object(get_rid())
     ray.add_exception(self)
     _create_character_visual()
     health_changed.emit(health)
     battery_changed.emit(battery)
 
+func _load_video_controls() -> void:
+    var config := ConfigFile.new()
+    if config.load("user://settings.cfg") == OK:
+        mouse_sensitivity = float(config.get_value("controls", "sensitivity", MOUSE_SENSITIVITY))
+        invert_mouse_y = bool(config.get_value("controls", "invert_y", false))
+        camera_fov = float(config.get_value("controls", "fov", 74.0))
+    camera.fov = clampf(camera_fov, 60.0, 100.0)
+
+func save_control_options(sensitivity: float, inverted_y: bool, fov_value: float) -> void:
+    mouse_sensitivity = clampf(sensitivity, 0.0007, 0.006)
+    invert_mouse_y = inverted_y
+    camera_fov = clampf(fov_value, 60.0, 100.0)
+    camera.fov = camera_fov
+    var config := ConfigFile.new()
+    config.set_value("controls", "sensitivity", mouse_sensitivity)
+    config.set_value("controls", "invert_y", invert_mouse_y)
+    config.set_value("controls", "fov", camera_fov)
+    config.save("user://settings.cfg")
+
 func _create_character_visual() -> void:
-    # Geometría placeholder reemplazable por un personaje importado y AnimationTree.
-    _add_mesh_part(visuals, "Chaqueta", CapsuleMesh.new(), Vector3(0, 1.02, 0), Vector3(0.75, 0.82, 0.45), Color("#6ba8a3"))
-    _add_mesh_part(visuals, "Cabeza", SphereMesh.new(), Vector3(0, 1.69, 0), Vector3(0.38, 0.42, 0.36), Color("#e7b597"))
-    _add_mesh_part(visuals, "Mochila", BoxMesh.new(), Vector3(0, 1.08, 0.34), Vector3(0.55, 0.69, 0.34), Color("#647d6f"))
-    _add_mesh_part(visuals, "PiernaIzq", CapsuleMesh.new(), Vector3(-0.16, 0.45, 0), Vector3(0.23, 0.60, 0.24), Color("#2a3c50"))
-    _add_mesh_part(visuals, "PiernaDer", CapsuleMesh.new(), Vector3(0.16, 0.45, 0), Vector3(0.23, 0.60, 0.24), Color("#2a3c50"))
-    _add_mesh_part(visuals, "BrazoIzq", CapsuleMesh.new(), Vector3(-0.43, 1.12, 0), Vector3(0.23, 0.64, 0.24), Color("#588b86"))
-    _add_mesh_part(visuals, "BrazoDer", CapsuleMesh.new(), Vector3(0.43, 1.12, 0), Vector3(0.23, 0.64, 0.24), Color("#588b86"))
+    # Superviviente low-poly con silueta humana: piezas angulares, sin primitivas cápsula.
+    var torso := _add_mesh_part(visuals, "Chaqueta de campo", BoxMesh.new(), Vector3(0, 1.13, 0), Vector3(0.62, 0.72, 0.34), Color("#526d68"))
+    torso.rotation.x = -0.04
+    _add_mesh_part(visuals, "Cuello", CylinderMesh.new(), Vector3(0, 1.57, 0), Vector3(0.14, 0.16, 0.14), Color("#b58c70"))
+    _add_mesh_part(visuals, "Cabeza", SphereMesh.new(), Vector3(0, 1.76, 0), Vector3(0.24, 0.29, 0.23), Color("#bc957d"))
+    _add_mesh_part(visuals, "Cabello", BoxMesh.new(), Vector3(0, 1.96, 0.015), Vector3(0.39, 0.13, 0.38), Color("#292b28"))
+    _add_mesh_part(visuals, "Mochila", BoxMesh.new(), Vector3(0, 1.19, 0.27), Vector3(0.45, 0.56, 0.25), Color("#384d43"))
+    _add_mesh_part(visuals, "Correa izquierda", BoxMesh.new(), Vector3(-0.205, 1.18, -0.18), Vector3(0.07, 0.58, 0.04), Color("#b29765"))
+    _add_mesh_part(visuals, "Correa derecha", BoxMesh.new(), Vector3(0.205, 1.18, -0.18), Vector3(0.07, 0.58, 0.04), Color("#b29765"))
+    var leg_l := _add_mesh_part(visuals, "Pantalon cargo izquierdo", BoxMesh.new(), Vector3(-0.16, 0.58, 0), Vector3(0.23, 0.68, 0.27), Color("#39464b"))
+    var leg_r := _add_mesh_part(visuals, "Pantalon cargo derecho", BoxMesh.new(), Vector3(0.16, 0.58, 0), Vector3(0.23, 0.68, 0.27), Color("#39464b"))
+    _limbs.append(leg_l); _limbs.append(leg_r)
+    _add_mesh_part(visuals, "Bolsillo cargo izquierdo", BoxMesh.new(), Vector3(-0.17, 0.62, -0.15), Vector3(0.18, 0.22, 0.08), Color("#586257"))
+    _add_mesh_part(visuals, "Bolsillo cargo derecho", BoxMesh.new(), Vector3(0.17, 0.62, -0.15), Vector3(0.18, 0.22, 0.08), Color("#586257"))
+    _add_mesh_part(visuals, "Bota izquierda", BoxMesh.new(), Vector3(-0.16, 0.13, -0.065), Vector3(0.27, 0.22, 0.42), Color("#252928"))
+    _add_mesh_part(visuals, "Bota derecha", BoxMesh.new(), Vector3(0.16, 0.13, -0.065), Vector3(0.27, 0.22, 0.42), Color("#252928"))
+    var arm_l := _add_mesh_part(visuals, "Manga izquierda", BoxMesh.new(), Vector3(-0.39, 1.13, 0), Vector3(0.20, 0.62, 0.22), Color("#526d68"))
+    var arm_r := _add_mesh_part(visuals, "Manga derecha", BoxMesh.new(), Vector3(0.39, 1.13, 0), Vector3(0.20, 0.62, 0.22), Color("#526d68"))
+    _limbs.append(arm_l); _limbs.append(arm_r)
+    _add_mesh_part(visuals, "Guante izquierdo", BoxMesh.new(), Vector3(-0.39, 0.79, 0), Vector3(0.18, 0.13, 0.20), Color("#303735"))
+    _add_mesh_part(visuals, "Guante derecho", BoxMesh.new(), Vector3(0.39, 0.79, 0), Vector3(0.18, 0.13, 0.20), Color("#303735"))
     _spear_model = Node3D.new()
     _spear_model.name = "EquippedSpearVisual"
     _spear_model.position = Vector3(0.57, 1.12, -0.23)
@@ -66,8 +106,44 @@ func _create_character_visual() -> void:
     _add_mesh_part(_spear_model, "Astil", CylinderMesh.new(), Vector3(0, 0.25, 0), Vector3(0.065, 1.65, 0.065), Color("#b48859"))
     _add_mesh_part(_spear_model, "Punta", CylinderMesh.new(), Vector3(0, 1.12, 0), Vector3(0.13, 0.35, 0.13), Color("#c5d8df"))
     _spear_model.visible = false
+    _setup_character_animation()
 
-func _add_mesh_part(parent: Node3D, label: String, mesh: Mesh, at: Vector3, scaling: Vector3, tint: Color) -> void:
+func _setup_character_animation() -> void:
+    _animation_player = AnimationPlayer.new()
+    _animation_player.name = "CharacterAnimationPlayer"
+    add_child(_animation_player)
+    var library := AnimationLibrary.new()
+    for anim_name in ["idle", "walk", "run", "crouch", "jump"]:
+        var animation := Animation.new()
+        animation.length = 1.0
+        animation.loop_mode = Animation.LOOP_LINEAR if anim_name in ["idle", "walk", "run", "crouch"] else Animation.LOOP_NONE
+        var scale := 0.0 if anim_name in ["idle", "crouch"] else (0.8 if anim_name == "walk" else 1.0)
+        for i in range(4):
+            var track := animation.add_track(Animation.TYPE_VALUE)
+            animation.track_insert_key(track, 0.0, _limbs[i].rotation.x)
+            var side := 1.0 if i in [0, 3] else -1.0
+            var amplitude := 0.43 * scale * side
+            animation.track_insert_key(track, 0.25, amplitude)
+            animation.track_insert_key(track, 0.5, 0.0)
+            animation.track_insert_key(track, 0.75, -amplitude)
+            animation.track_insert_key(track, 1.0, 0.0)
+            animation.track_set_path(track, NodePath("Visual/" + _limbs[i].name + ":rotation:x"))
+        library.add_animation(anim_name, animation)
+    _animation_player.add_animation_library("", library)
+    var blend := AnimationNodeBlendSpace2D.new()
+    var anim_node := AnimationNodeAnimation.new(); anim_node.animation = "idle"; blend.add_blend_point(anim_node, Vector2.ZERO, -1, "idle")
+    anim_node = AnimationNodeAnimation.new(); anim_node.animation = "walk"; blend.add_blend_point(anim_node, Vector2(0, 1), -1, "walk")
+    anim_node = AnimationNodeAnimation.new(); anim_node.animation = "run"; blend.add_blend_point(anim_node, Vector2(0, 2), -1, "run")
+    anim_node = AnimationNodeAnimation.new(); anim_node.animation = "crouch"; blend.add_blend_point(anim_node, Vector2(-1, 0), -1, "crouch")
+    anim_node = AnimationNodeAnimation.new(); anim_node.animation = "jump"; blend.add_blend_point(anim_node, Vector2(1, 0), -1, "jump")
+    _animation_tree = AnimationTree.new()
+    _animation_tree.name = "CharacterAnimationTree"
+    _animation_tree.anim_player = NodePath("../CharacterAnimationPlayer")
+    _animation_tree.tree_root = blend
+    _animation_tree.active = true
+    add_child(_animation_tree)
+
+func _add_mesh_part(parent: Node3D, label: String, mesh: Mesh, at: Vector3, scaling: Vector3, tint: Color) -> MeshInstance3D:
     var instance := MeshInstance3D.new()
     instance.name = label
     instance.mesh = mesh
@@ -78,6 +154,7 @@ func _add_mesh_part(parent: Node3D, label: String, mesh: Mesh, at: Vector3, scal
     mat.roughness = 0.88
     instance.material_override = mat
     parent.add_child(instance)
+    return instance
 
 func set_ui_open(opened: bool) -> void:
     ui_open = opened
@@ -87,8 +164,8 @@ func _unhandled_input(event: InputEvent) -> void:
     if ui_open:
         return
     if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-        pivot.rotation.y -= event.relative.x * MOUSE_SENSITIVITY
-        pivot.rotation.x = clampf(pivot.rotation.x - event.relative.y * MOUSE_SENSITIVITY, -1.33, 1.22)
+        pivot.rotation.y -= event.relative.x * mouse_sensitivity
+        pivot.rotation.x = clampf(pivot.rotation.x + event.relative.y * mouse_sensitivity * (1.0 if invert_mouse_y else -1.0), -1.33, 1.22)
         get_viewport().set_input_as_handled()
     elif event.is_action_pressed("camera_toggle"):
         first_person = not first_person
@@ -132,7 +209,7 @@ func _physics_process(delta: float) -> void:
     shape.height = move_toward(shape.height, desired_height, 3.5 * delta)
     collider.position.y = shape.height * 0.5
     pivot.position.y = move_toward(pivot.position.y, 1.03 if crouching else 1.58, 3.2 * delta)
-    visuals.scale.y = move_toward(visuals.scale.y, 0.72 if crouching else 1.0, 2.0 * delta)
+    visuals.scale.y = 1.0
 
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
@@ -149,6 +226,15 @@ func _physics_process(delta: float) -> void:
     velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * delta)
     velocity.z = move_toward(velocity.z, direction.z * speed, acceleration * delta)
     move_and_slide()
+    var planar_speed := Vector2(velocity.x, velocity.z).length()
+    _motion_phase += delta * (10.0 if running else 7.0)
+    var stride := clampf(planar_speed / SPRINT_SPEED, 0.0, 1.0) * (1.0 if is_on_floor() else 0.2)
+    if _animation_tree != null:
+        var blend_position := Vector2.ZERO
+        if not is_on_floor(): blend_position = Vector2(1.0, 0.0)
+        elif crouching: blend_position = Vector2(-1.0, 0.0)
+        elif stride > 0.05: blend_position = Vector2(0.0, 2.0 if running else 1.0)
+        _animation_tree.set("parameters/blend_position", blend_position)
     if direction.length_squared() > 0.02:
         visuals.rotation.y = lerp_angle(visuals.rotation.y, atan2(-direction.x, -direction.z), minf(delta * 11.0, 1.0))
 
