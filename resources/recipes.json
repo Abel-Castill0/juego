@@ -1,0 +1,5 @@
+[
+  {"id":"bandage", "name":"Vendaje", "ingredients":{"cloth":2, "herb":1}, "output":"bandage", "quantity":1},
+  {"id":"torch", "name":"Antorcha", "ingredients":{"wood":1, "resin":1}, "output":"torch", "quantity":1},
+  {"id":"spear", "name":"Lanza improvisada", "ingredients":{"wood":1, "scrap":2}, "output":"spear", "quantity":1}
+]

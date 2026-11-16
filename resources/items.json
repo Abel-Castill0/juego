@@ -1,0 +1,12 @@
+{
+  "cloth":   {"name":"Tela", "weight_kg":0.15, "max_stack":64, "color":"#d9e1d0", "description":"Retazos utiles para primeros auxilios."},
+  "herb":    {"name":"Hierbas", "weight_kg":0.10, "max_stack":64, "color":"#70c79c", "description":"Hojas medicinales."},
+  "wood":    {"name":"Madera", "weight_kg":0.70, "max_stack":64, "color":"#cba178", "description":"Palo robusto para fabricar herramientas."},
+  "resin":   {"name":"Resina", "weight_kg":0.15, "max_stack":64, "color":"#d8b669", "description":"Combustible para antorchas."},
+  "scrap":   {"name":"Chatarra", "weight_kg":0.45, "max_stack":64, "color":"#a3b4bd", "description":"Metal reciclado con filo."},
+  "battery": {"name":"Pila", "weight_kg":0.30, "max_stack":64, "color":"#f4cd5d", "description":"Recarga 35 puntos de bateria."},
+  "food":    {"name":"Conserva", "weight_kg":0.35, "max_stack":64, "color":"#db776c", "description":"Provision encontrada; hambre en una fase posterior."},
+  "bandage": {"name":"Vendaje", "weight_kg":0.20, "max_stack":64, "color":"#e9f4f0", "description":"Restaura hasta 30 puntos de salud."},
+  "torch":   {"name":"Antorcha", "weight_kg":0.80, "max_stack":64, "color":"#fa9552", "description":"Luz portable que no usa pilas en el MVP."},
+  "spear":   {"name":"Lanza improvisada", "weight_kg":1.40, "max_stack":64, "color":"#9ab6c1", "description":"Se puede equipar. Combate reservado a fase 2."}
+}
